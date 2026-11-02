@@ -13,22 +13,21 @@ sys.path.insert(0, str(Path(__file__).parent))
 import build_dataset as bd
 import spike_reference as ref
 
-CAP = int(sys.argv[1])
-PAGES = int(sys.argv[2])
-LINEAGES = sys.argv[3:]
-WANTED = {"Europe", "North America", "Africa", "Asia", "South America"}
+WANTED_REGIONS = {"Europe", "North America", "Africa", "Asia", "South America"}
+METADATA_PATH = Path("data/raw/metadata.csv")
+FASTA_PATH = Path("data/raw/spike_proteins.fasta")
 
-meta_path = Path("data/raw/metadata.csv")
-fasta_path = Path("data/raw/spike_proteins.fasta")
-existing = {r["accession"] for r in csv.DictReader(open(meta_path))}
-print(f"{len(existing)} accessions already held", flush=True)
 
-for lineage in LINEAGES:
+def collect_new_records(lineage: str, cap_per_region: int, max_pages: int,
+                        already_held: set[str]) -> list[dict]:
+    """Page the dataset report for one lineage, keeping unseen records."""
     kept: list[dict] = []
     per_region: collections.Counter = collections.Counter()
     token, scanned = None, 0
-    for page in range(PAGES):
-        params = {"filter.pangolin_classification": lineage, "page_size": bd.PAGE_SIZE}
+
+    for page in range(max_pages):
+        params = {"filter.pangolin_classification": lineage,
+                  "page_size": bd.PAGE_SIZE}
         if token:
             params["page_token"] = token
         try:
@@ -38,28 +37,35 @@ for lineage in LINEAGES:
         except Exception as exc:
             print(f"  {lineage} page {page} failed: {exc}", flush=True)
             break
+
         reports = payload.get("reports") or []
         if not reports:
             break
+
         for rec in reports:
             scanned += 1
-            iso, loc = rec.get("isolate") or {}, rec.get("location") or {}
-            region, date = loc.get("geographic_region"), iso.get("collection_date")
-            if (not region or not date or region not in WANTED
+            iso = rec.get("isolate") or {}
+            loc = rec.get("location") or {}
+            region = loc.get("geographic_region")
+            date = iso.get("collection_date")
+            if (not region or not date or region not in WANTED_REGIONS
                     or rec.get("is_annotated") is False
-                    or rec["accession"] in existing
-                    or per_region[region] >= CAP):
+                    or rec["accession"] in already_held
+                    or per_region[region] >= cap_per_region):
                 continue
             kept.append({
-                "accession": rec["accession"], "lineage": lineage,
+                "accession": rec["accession"],
+                "lineage": lineage,
                 "variant": ref.variant_from_pango(lineage),
                 "country": (loc.get("geographic_location") or "").split(":")[0].strip(),
-                "region": region, "collection_date": date,
+                "region": region,
+                "collection_date": date,
                 "genome_length": rec.get("length"),
                 "completeness": rec.get("completeness"),
             })
             per_region[region] += 1
-            existing.add(rec["accession"])
+            already_held.add(rec["accession"])
+
         token = payload.get("next_page_token")
         if page % 20 == 0:
             print(f"  {lineage} page {page:3d} scanned {scanned:6d} "
@@ -68,21 +74,41 @@ for lineage in LINEAGES:
             break
         time.sleep(bd.DATASETS_PAUSE)
 
-    print(f"{lineage}: scanned {scanned}, new {len(kept)} {dict(per_region)}", flush=True)
-    if not kept:
-        continue
-    seqs = bd.fetch_spikes([r["accession"] for r in kept])
-    rows = [r for r in kept if r["accession"] in seqs]
-    print(f"{lineage}: {len(rows)} with spike", flush=True)
-    if not rows:
-        continue
-    with open(meta_path, "a", newline="") as handle:
+    print(f"{lineage}: scanned {scanned}, new {len(kept)} {dict(per_region)}",
+          flush=True)
+    return kept
+
+
+def append_records(rows: list[dict], sequences: dict[str, str]) -> None:
+    """Append new records to the metadata table and the sequence file."""
+    with open(METADATA_PATH, "a", newline="") as handle:
         csv.DictWriter(handle, fieldnames=list(rows[0].keys())).writerows(rows)
-    with open(fasta_path, "a") as handle:
-        for r in rows:
-            handle.write(f">{r['accession']}|{r['lineage']}|{r['variant']}|"
-                         f"{r['region']}|{r['collection_date']}\n")
-            s = seqs[r["accession"]]
-            for i in range(0, len(s), 60):
-                handle.write(s[i:i + 60] + "\n")
-    print(f"{lineage}: appended", flush=True)
+    with open(FASTA_PATH, "a") as handle:
+        for row in rows:
+            handle.write(f">{row['accession']}|{row['lineage']}|{row['variant']}|"
+                         f"{row['region']}|{row['collection_date']}\n")
+            seq = sequences[row["accession"]]
+            for i in range(0, len(seq), 60):
+                handle.write(seq[i:i + 60] + "\n")
+
+
+def main(cap_per_region: int, max_pages: int, lineages: list[str]) -> None:
+    already_held = {r["accession"] for r in csv.DictReader(open(METADATA_PATH))}
+    print(f"{len(already_held)} accessions already held", flush=True)
+
+    for lineage in lineages:
+        kept = collect_new_records(lineage, cap_per_region, max_pages, already_held)
+        if not kept:
+            continue
+        sequences = bd.fetch_spikes([r["accession"] for r in kept])
+        rows = [r for r in kept if r["accession"] in sequences]
+        print(f"{lineage}: {len(rows)} with spike", flush=True)
+        if rows:
+            append_records(rows, sequences)
+            print(f"{lineage}: appended", flush=True)
+
+
+if __name__ == "__main__":
+    if len(sys.argv) < 4:
+        sys.exit("usage: topup.py <cap_per_region> <max_pages> <lineage> [lineage ...]")
+    main(int(sys.argv[1]), int(sys.argv[2]), sys.argv[3:])
