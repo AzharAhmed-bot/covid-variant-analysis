@@ -1,12 +1,4 @@
-"""Deepen the sample for chosen lineages and regions.
-
-Within a variant, spike carries limited diversity: thousands of isolates
-collapse to a few hundred distinct mutation profiles. The geographic task is
-therefore limited by distinct profiles rather than by record count, and the
-only way to gain power is to scan more records and keep the new profiles.
-
-Run: python3 -I src/topup.py <cap_per_region> <max_pages> <lineage> [lineage ...]
-"""
+"""Deepen the sample for chosen lineages and regions."""
 from __future__ import annotations
 
 import collections
@@ -24,7 +16,6 @@ import spike_reference as ref
 CAP = int(sys.argv[1])
 PAGES = int(sys.argv[2])
 LINEAGES = sys.argv[3:]
-# Regions worth deepening: the ones with enough records to support a model.
 WANTED = {"Europe", "North America", "Africa", "Asia", "South America"}
 
 meta_path = Path("data/raw/metadata.csv")

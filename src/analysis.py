@@ -1,25 +1,4 @@
-"""Stage 5: statistical comparison of spike variation between variants.
-
-Two questions are tested.
-
-Per position. For each of the 1273 reference positions, does the proportion of
-isolates carrying a non-reference residue differ between Alpha, Delta and
-Omicron? Each position gives a 3 x 2 contingency table, tested with a
-chi-square test of independence, or Fisher's exact test where expected counts
-are too small for the chi-square approximation to hold. Testing 1273 positions
-inflates false positives, so p-values are corrected with Benjamini-Hochberg and
-reported as q-values.
-
-Mutation burden. Does the number of RBD mutations per isolate differ between
-variants? Counts are small integers and far from normal, so the omnibus test is
-Kruskal-Wallis, followed by pairwise Mann-Whitney U tests with
-Benjamini-Hochberg correction across the three comparisons.
-
-Statistical significance is separated from effect size throughout. With
-hundreds of sequences a difference of a few percent reaches significance while
-meaning little biologically, so the frequency difference is reported alongside
-every q-value.
-"""
+"""Stage 5: statistical comparison of spike variation between variants."""
 from __future__ import annotations
 
 import itertools
@@ -37,12 +16,7 @@ AMBIGUOUS_CHAR = "X"
 
 def mutation_matrix(df: pd.DataFrame, reference: str,
                     column: str = "spike") -> pd.DataFrame:
-    """Boolean matrix of isolates x positions, True where the residue differs.
-
-    Unresolved (X) positions are recorded as missing rather than as mutations,
-    so they are excluded from each position's test instead of being counted as
-    changes.
-    """
+    """Boolean matrix of isolates x positions, True where the residue differs."""
     n, length = len(df), len(reference)
     data = np.zeros((n, length), dtype=object)
     for i, seq in enumerate(df[column].to_numpy()):
@@ -75,7 +49,6 @@ def per_position_tests(mut: pd.DataFrame, groups: pd.Series,
         total_mutated = table[:, 0].sum()
         if total_mutated < min_count or table.sum() == 0:
             continue
-        # Chi-square needs adequate expected counts; otherwise use Fisher.
         try:
             chi2, p, _, expected = stats.chi2_contingency(table)
             test = "chi-square"
@@ -123,7 +96,6 @@ def burden_comparison(df: pd.DataFrame, value: str = "n_rbd_mutations",
         x = df.loc[df[group] == a, value].to_numpy()
         y = df.loc[df[group] == b, value].to_numpy()
         U, p = stats.mannwhitneyu(x, y, alternative="two-sided")
-        # Rank-biserial correlation: the effect size matching Mann-Whitney.
         rbc = 2 * U / (len(x) * len(y)) - 1
         pairs.append(f"{a} vs {b}")
         raw_p.append(p)

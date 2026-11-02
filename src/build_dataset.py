@@ -1,21 +1,4 @@
-"""Download the isolate-level dataset: spike proteins plus metadata.
-
-Metadata comes from the NCBI Datasets v2 virus dataset report, which carries
-the Pango lineage, the collection date and a continent-level geographic
-region. Protein sequences come from E-utilities `efetch` with
-`rettype=fasta_cds_aa`, which returns the annotated CDS translations; the
-Datasets download endpoint was not usable here because its per-accession form
-never serves sequence files and its taxon form only offers the whole lineage,
-which is hundreds of megabytes.
-
-Sampling is stratified by geographic region, because records come back
-clustered by submitting laboratory and the first pages of any lineage are
-dominated by a single country. Region counts stay uneven even so: that
-reflects real differences in sequencing capacity and is reported rather than
-corrected away.
-
-Run: python3 -I src/build_dataset.py [target_per_variant]
-"""
+"""Download the isolate-level dataset: spike proteins plus metadata."""
 from __future__ import annotations
 
 import collections
@@ -34,7 +17,6 @@ UA = {"User-Agent": "strathmore-bioinformatics-coursework/1.0"}
 DATASETS = "https://api.ncbi.nlm.nih.gov/datasets/v2alpha"
 EUTILS = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
 
-# Lineages sampled for each WHO variant label.
 LINEAGES = {
     "Alpha":   ["B.1.1.7"],
     "Delta":   ["B.1.617.2", "AY.4"],
@@ -45,7 +27,7 @@ PAGE_SIZE = 1000
 MAX_PAGES_PER_LINEAGE = 25
 CAP_PER_REGION = 150
 EFETCH_BATCH = 100
-EFETCH_PAUSE = 0.5          # stay under the 3 requests/second anonymous limit
+EFETCH_PAUSE = 0.5
 DATASETS_PAUSE = 0.25
 
 
@@ -63,14 +45,7 @@ def fetch(url: str, timeout: int = 300, retries: int = 4) -> bytes:
 
 
 def collect_metadata(lineage: str, target: int) -> list[dict]:
-    """Page the dataset report, keeping usable records balanced across regions.
-
-    A record is usable when it is annotated and carries both a collection date
-    and a geographic region. Genome-level `completeness` is deliberately not
-    required: many full-length Alpha genomes are flagged PARTIAL because of
-    terminal ambiguous bases while the spike CDS is complete and annotated.
-    Sequence quality is judged later, on the spike protein itself.
-    """
+    """Page the dataset report, keeping usable records balanced across regions."""
     kept: list[dict] = []
     per_region: collections.Counter = collections.Counter()
     token, scanned = None, 0

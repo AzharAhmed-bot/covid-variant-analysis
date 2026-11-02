@@ -1,13 +1,4 @@
-"""Reference layer for the SARS-CoV-2 spike project.
-
-Provides:
-  * the Wuhan-Hu-1 (MN908947) spike protein sequence, translated from the genome
-  * spike domain coordinates used for Stage 6 annotation
-  * variant-defining spike mutations parsed from CoVariants
-
-All coordinates are 1-based amino-acid positions in the mature S protein
-numbering used throughout the SARS-CoV-2 literature (S starts at M1).
-"""
+"""Reference layer for the SARS-CoV-2 spike project."""
 from __future__ import annotations
 
 import json
@@ -15,13 +6,10 @@ from pathlib import Path
 
 from Bio.Seq import Seq
 
-# Spike CDS in MN908947 / NC_045512.2, 1-based inclusive.
 SPIKE_CDS_START = 21563
 SPIKE_CDS_END = 25384
 EXPECTED_SPIKE_LENGTH = 1273
 
-# Domain boundaries, 1-based inclusive, in S protein numbering.
-# Non-overlapping structural partition used for per-position annotation.
 SPIKE_DOMAINS = {
     "Signal peptide": (1, 13),
     "NTD": (14, 305),
@@ -43,12 +31,10 @@ SPIKE_DOMAINS = {
     "Cytoplasmic tail": (1238, 1273),
 }
 
-# Receptor-binding motif: the RBD sub-region that makes direct ACE2 contact.
 RBM = (437, 508)
 RBD = SPIKE_DOMAINS["RBD"]
 FURIN_SITE = SPIKE_DOMAINS["S1/S2 furin site"]
 
-# Nextstrain clade -> WHO variant label, for the groups this project analyses.
 CLADE_TO_VARIANT = {
     "20I (Alpha, V1)": "Alpha",
     "21A (Delta)": "Delta",
@@ -59,22 +45,18 @@ CLADE_TO_VARIANT = {
     "22B (Omicron)": "Omicron",
 }
 
-# Pango lineage prefixes -> WHO variant label. Order matters: longest first.
 PANGO_TO_VARIANT = [
     ("B.1.1.7", "Alpha"),
-    ("Q.", "Alpha"),          # Q.* are Alpha sublineages
+    ("Q.", "Alpha"),
     ("B.1.617.2", "Delta"),
-    ("AY.", "Delta"),         # AY.* are Delta sublineages
+    ("AY.", "Delta"),
     ("B.1.1.529", "Omicron"),
     ("BA.", "Omicron"),
 ]
 
 
 def load_reference_spike(genome_fasta: str | Path) -> str:
-    """Translate the spike CDS out of the Wuhan-Hu-1 genome.
-
-    Returns the 1273-residue protein with the terminal stop removed.
-    """
+    """Translate the spike CDS out of the Wuhan-Hu-1 genome."""
     seq_lines = []
     with open(genome_fasta) as handle:
         for line in handle:
@@ -115,11 +97,7 @@ def in_rbm(pos: int) -> bool:
 
 
 def load_covariants_mutations(clusters_json: str | Path) -> dict[str, list[dict]]:
-    """Parse CoVariants clusters.json into {clade: [spike mutations]}.
-
-    Each mutation is {"ref": str, "pos": int, "alt": str}. 'alt' of "-" means
-    a deletion. Only gene == "S" entries are kept.
-    """
+    """Parse CoVariants clusters.json into {clade: [spike mutations]}."""
     with open(clusters_json) as handle:
         clusters = json.load(handle)["clusters"]
 

@@ -1,29 +1,4 @@
-"""Stage 7: classification, ablation and clustering.
-
-Three things are modelled, for different reasons.
-
-Geographic origin, within one variant. This is the honest predictive task.
-Region is not part of how a lineage is defined, so a model has to find real
-signal, and it may fail. The variant is held fixed because region and variant
-are confounded in GenBank: Omicron records are overwhelmingly North American,
-so a model free to read the variant could infer the region from that instead
-of from geography. Holding the variant fixed removes that shortcut.
-
-Variant, as an ablation. Predicting variant from spike is circular, because
-lineages are defined by these mutations, and both the model and a trivial
-baseline score near 100%. It is still worth running as an ablation: comparing
-the full spike against an RBD-masked spike and the RBD alone measures how much
-variant signal sits outside the receptor-binding domain, which is a real
-quantity rather than a restatement of the labels.
-
-Clustering, unsupervised. Whether structure in spike sequence recovers the
-variant labels without being told them, scored with the adjusted Rand index.
-
-Leakage is controlled in three ways: identical mutation profiles are removed
-before splitting, so no sequence appears in both training and test; feature
-selection and scaling run inside each cross-validation fold through a
-pipeline, never on the full dataset; and the test set is evaluated once.
-"""
+"""Stage 7: classification, ablation and clustering."""
 from __future__ import annotations
 
 import numpy as np
@@ -46,11 +21,7 @@ RANDOM_STATE = 42
 
 def mutation_features(df: pd.DataFrame, reference: str,
                       column: str = "spike") -> pd.DataFrame:
-    """Binary isolates x positions matrix: 1 where the residue differs.
-
-    Unresolved positions are encoded 0 (treated as "no evidence of a
-    mutation") rather than 1, so missing data cannot masquerade as signal.
-    """
+    """Binary isolates x positions matrix: 1 where the residue differs."""
     length = len(reference)
     rows = np.zeros((len(df), length), dtype=np.int8)
     for i, seq in enumerate(df[column].to_numpy()):
@@ -187,17 +158,7 @@ def clustering_report(X: pd.DataFrame, y: pd.Series) -> pd.DataFrame:
 
 def redundancy_curve(X: pd.DataFrame, y: pd.Series, sizes=(1, 2, 3, 5, 10, 20, 50, 100),
                      n_repeats: int = 20, random_state: int = RANDOM_STATE) -> pd.DataFrame:
-    """How many spike positions are needed to separate the variants?
-
-    Masking the RBD does not reduce variant accuracy at all, which says the
-    signal is not localised: it is repeated across the protein. To measure that
-    redundancy, randomly chosen subsets of positions of increasing size are used
-    as the only features. The size at which accuracy saturates is the number of
-    arbitrary positions sufficient to identify a variant.
-
-    Positions are drawn from those that actually vary, since constant columns
-    carry no information and would only dilute the sample.
-    """
+    """How many spike positions are needed to separate the variants?"""
     rng = np.random.default_rng(random_state)
     varying = [c for c in X.columns if X[c].nunique() > 1]
     cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=random_state)

@@ -1,17 +1,4 @@
-"""Project spike protein sequences onto Wuhan-Hu-1 reference coordinates.
-
-Every analysed sequence is represented as a fixed-length string of
-EXPECTED_SPIKE_LENGTH (1273) characters, one per reference residue:
-
-    an amino-acid letter  the residue aligned to that reference position
-    '-'                   deletion relative to the reference
-    'X'                   ambiguous or unresolved residue
-
-Insertions relative to the reference are recorded separately rather than
-widening the coordinate system, so that position 501 always means S:501 in the
-numbering used by the literature. Insertions are rare in spike and are counted
-but not used as model features; this is stated as a limitation.
-"""
+"""Project spike protein sequences onto Wuhan-Hu-1 reference coordinates."""
 from __future__ import annotations
 
 from Bio import Align
@@ -20,17 +7,11 @@ AMBIGUOUS = set("XBZJUO*")
 
 
 def make_aligner() -> Align.PairwiseAligner:
-    """Global protein aligner with gap costs that favour few, long gaps.
-
-    BLOSUM62 with an open/extend penalty chosen so that the known spike
-    deletions (for example the 69-70 and 142-144 deletions) come out as single
-    contiguous gaps rather than scattered single-residue gaps.
-    """
+    """Global protein aligner with gap costs that favour few, long gaps."""
     aligner = Align.PairwiseAligner(scoring="blastp")
     aligner.mode = "global"
     aligner.open_gap_score = -11
     aligner.extend_gap_score = -1
-    # Do not penalise gaps at the sequence ends: many records are 5'/3' truncated.
     for new_name, old_name in (("end_insertion_score", "target_end_gap_score"),
                                ("end_deletion_score", "query_end_gap_score")):
         try:
@@ -45,11 +26,7 @@ def project_to_reference(
     reference: str,
     aligner: Align.PairwiseAligner | None = None,
 ) -> tuple[str, int]:
-    """Align `query` to `reference` and return it in reference coordinates.
-
-    Returns (projected, n_inserted_residues) where `projected` has the same
-    length as `reference`.
-    """
+    """Align `query` to `reference` and return it in reference coordinates."""
     aligner = aligner or make_aligner()
     query = query.upper().replace("*", "")
 
@@ -57,14 +34,14 @@ def project_to_reference(
     ref_idx, qry_idx = alignment.aligned
 
     projected = ["-"] * len(reference)
-    matched_ref = 0
+    reference_positions_matched = 0
     for (r_start, r_end), (q_start, q_end) in zip(ref_idx, qry_idx):
         block = query[q_start:q_end]
         for offset, residue in enumerate(block):
             projected[r_start + offset] = "X" if residue in AMBIGUOUS else residue
-        matched_ref += r_end - r_start
+        reference_positions_matched += r_end - r_start
 
-    n_inserted = len(query) - matched_ref
+    n_inserted = len(query) - reference_positions_matched
     return "".join(projected), max(n_inserted, 0)
 
 
@@ -89,15 +66,6 @@ def format_mutation(ref_aa: str, pos: int, alt_aa: str) -> str:
     return f"{ref_aa}{pos}del" if alt_aa == "-" else f"{ref_aa}{pos}{alt_aa}"
 
 
-# Regions where protein-level alignment cannot reliably place deletions.
-# A contiguous deletion run next to a substituted residue admits several
-# placements with different BLOSUM scores, so the highest-scoring alignment is
-# not necessarily the one curated annotation reports. In BA.1, residues 142-144
-# are deleted and 145 is substituted (Y145D); BLOSUM62 scores D against G142
-# better than against Y145, so the aligner prefers the non-curated placement.
-# Nucleotide-level codon-aware alignment (as used by Nextclade) avoids this.
-# Per-position deletion calls in these windows are therefore treated as
-# uncertain, and deletions are also summarised per region.
 INDEL_AMBIGUOUS_REGIONS = [(69, 70), (141, 146), (156, 158), (211, 212), (241, 243)]
 
 
@@ -107,13 +75,7 @@ def is_indel_ambiguous(pos: int) -> bool:
 
 
 def normalise_gaps(projected: str, reference: str) -> str:
-    """Left-shift gap runs through score-equivalent placements.
-
-    A gap run moves one position left when the residue displaced from its left
-    edge lands on an identical reference residue, which leaves the alignment
-    score unchanged. Applying this consistently makes deletion placement
-    deterministic across sequences wherever several alignments tie.
-    """
+    """Left-shift gap runs through score-equivalent placements."""
     chars = list(projected)
     n = len(chars)
     i = 0

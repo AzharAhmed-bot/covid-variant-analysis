@@ -1,17 +1,4 @@
-"""Collect additional Alpha (B.1.1.7) isolates for the geographic task.
-
-Geographic region and variant are badly confounded in GenBank: Omicron
-records are overwhelmingly North American, Delta overwhelmingly European and
-North American. Predicting region across all variants would therefore let a
-model read the variant and infer the region from that, which is the circular
-shortcut this project is built to avoid.
-
-Holding the variant fixed removes the shortcut. Alpha has the widest regional
-spread, so the geographic task uses Alpha alone. This script deepens the Alpha
-sample so the task survives deduplication and quality filtering.
-
-Run: python3 -I src/topup_alpha.py [cap_per_region] [max_pages]
-"""
+"""Collect additional Alpha (B.1.1.7) isolates for the geographic task."""
 from __future__ import annotations
 
 import collections

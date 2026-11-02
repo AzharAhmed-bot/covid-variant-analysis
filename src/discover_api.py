@@ -1,11 +1,4 @@
-"""Probe the NCBI Datasets v2 virus API and print its actual field names.
-
-Run this first once outbound access to api.ncbi.nlm.nih.gov is available.
-NCBI has renamed virus report fields between releases, so the mapping into the
-canonical table is written only after seeing a real response.
-
-Run: python3 -I src/discover_api.py
-"""
+"""Probe the NCBI Datasets v2 virus API and print its actual field names."""
 import json
 import sys
 

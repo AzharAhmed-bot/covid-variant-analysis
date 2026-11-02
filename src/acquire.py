@@ -1,19 +1,4 @@
-"""Fetch SARS-CoV-2 spike protein sequences with variant, place and date.
-
-The project needs, for each isolate: an accession, a Pango lineage, a country
-and geographic region, a collection date, and the spike protein sequence.
-
-Two routes are supported.
-
-  api   NCBI Datasets v2 virus API. Fully programmatic, so the notebook runs
-        top to bottom without manual steps. Requires outbound access to
-        api.ncbi.nlm.nih.gov.
-
-  local A metadata table plus a protein FASTA exported from the NCBI Virus
-        portal. Used when the API is unreachable.
-
-Both routes produce the same canonical table, defined by CANONICAL_COLUMNS.
-"""
+"""Fetch SARS-CoV-2 spike protein sequences with variant, place and date."""
 from __future__ import annotations
 
 import io
@@ -31,13 +16,13 @@ SARS2_TAXON = "2697049"
 USER_AGENT = "strathmore-bioinformatics-coursework/1.0"
 
 CANONICAL_COLUMNS = [
-    "accession",        # str, NCBI nucleotide accession, unique
-    "lineage",          # str, Pango lineage as reported by NCBI
-    "variant",          # str, Alpha / Delta / Omicron (derived from lineage)
-    "country",          # str
-    "region",           # str, continent-level geographic region
-    "collection_date",  # datetime64, isolate collection date
-    "spike",            # str, spike protein sequence as deposited
+    "accession",
+    "lineage",
+    "variant",
+    "country",
+    "region",
+    "collection_date",
+    "spike",
 ]
 
 
@@ -56,12 +41,7 @@ def api_dataset_report(
     complete_only: bool = True,
     throttle: float = 0.4,
 ) -> list[dict]:
-    """Page through the virus dataset report for one Pango lineage.
-
-    Returns the raw report dictionaries so that field names can be inspected
-    before mapping. Kept deliberately thin: NCBI has changed field names
-    between releases, so mapping happens in `report_to_frame`.
-    """
+    """Page through the virus dataset report for one Pango lineage."""
     records: list[dict] = []
     page_token = None
     while len(records) < max_records:
@@ -101,7 +81,6 @@ def api_download_proteins(accessions: list[str], out_zip: str | Path,
                f"?include_annotation_type=PROT_FASTA")
         parts.append(_request(url, timeout=600))
         time.sleep(throttle)
-    # Concatenating zips is not valid; keep them separate on disk instead.
     if len(parts) == 1:
         out_zip.write_bytes(parts[0])
     else:
@@ -116,11 +95,7 @@ def api_download_proteins(accessions: list[str], out_zip: str | Path,
 
 
 def extract_spike_from_protein_fasta(raw: bytes) -> dict[str, str]:
-    """Pull surface glycoprotein records out of a protein FASTA zip.
-
-    Returns {accession: spike sequence}. Records are matched on the product
-    name in the defline, accepting the several spellings NCBI has used.
-    """
+    """Pull surface glycoprotein records out of a protein FASTA zip."""
     spike_names = ("surface glycoprotein", "spike glycoprotein", "spike protein")
     out: dict[str, str] = {}
     with zipfile.ZipFile(io.BytesIO(raw)) as z:
@@ -145,8 +120,6 @@ def _store(out: dict, header: str, seq: str, spike_names: tuple[str, ...]) -> No
     low = header.lower()
     if not any(n in low for n in spike_names):
         return
-    # Deflines carry the source nucleotide accession in brackets or as the
-    # first whitespace-delimited token; try both.
     acc = None
     if "[" in header and "]" in header:
         for field in header.split("["):

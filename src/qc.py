@@ -1,26 +1,4 @@
-"""Stage 3: load, project, quality-filter and deduplicate the spike dataset.
-
-Decisions taken here, and why.
-
-Length. Records are kept when the deposited spike protein is long enough to
-be a near-complete spike. Short records are truncated genes, not short
-proteins, and their absent positions would otherwise be scored as deletions.
-
-Ambiguity. Positions NCBI could not resolve arrive as X. A record with many X
-positions carries little information and inflates apparent novelty, so
-records above a small ambiguity fraction are dropped, and the X positions
-that remain are excluded from mutation calls rather than counted as changes.
-
-Deduplication. Identical sequences are common: many isolates of one variant
-differ nowhere in spike. Leaving them in would place copies of the same
-sequence in both the training and test folds, so a classifier could memorise
-rather than generalise. One representative of each distinct sequence is kept.
-
-Duplicates spanning regions are reported separately, because they bound what
-the geographic task can achieve: where one sequence occurs in several
-regions, no model reading only the sequence can assign all of them correctly.
-That bound is measured rather than assumed.
-"""
+"""Stage 3: load, project, quality-filter and deduplicate the spike dataset."""
 from __future__ import annotations
 
 import collections
@@ -32,7 +10,7 @@ import pandas as pd
 import align
 import spike_reference as ref
 
-MIN_RAW_LENGTH = 1200
+MIN_SPIKE_LENGTH_AA = 1200
 MAX_AMBIGUOUS_FRACTION = 0.02
 
 
@@ -92,7 +70,7 @@ def build_dataset(
     metadata_csv: str | Path,
     fasta_path: str | Path,
     reference: str,
-    min_raw_length: int = MIN_RAW_LENGTH,
+    min_spike_length_aa: int = MIN_SPIKE_LENGTH_AA,
     max_ambiguous_fraction: float = MAX_AMBIGUOUS_FRACTION,
     verbose: bool = True,
 ) -> tuple[pd.DataFrame, QCReport]:
@@ -110,14 +88,13 @@ def build_dataset(
     report.add("With a spike sequence", len(meta))
 
     meta["raw_length"] = meta["raw_spike"].str.len()
-    meta = meta[meta["raw_length"] >= min_raw_length].copy()
-    report.add(f"Spike length >= {min_raw_length} aa", len(meta))
+    meta = meta[meta["raw_length"] >= min_spike_length_aa].copy()
+    report.add(f"Spike length >= {min_spike_length_aa} aa", len(meta))
 
     meta["collection_date"] = meta["collection_date"].map(parse_collection_date)
     meta = meta[meta["collection_date"].notna()].copy()
     report.add("With a parsable collection date", len(meta))
 
-    # Project every sequence onto reference coordinates.
     aligner = align.make_aligner()
     projected, inserted = [], []
     for n, seq in enumerate(meta["raw_spike"], start=1):
@@ -134,19 +111,12 @@ def build_dataset(
     meta = meta[meta["ambiguous_fraction"] <= max_ambiguous_fraction].copy()
     report.add(f"Ambiguity <= {max_ambiguous_fraction:.0%} of positions", len(meta))
 
-    # Deduplicate on the mutation profile, not the raw projected string.
-    # Unresolved positions are excluded from mutation calls, so two records
-    # differing only in where their X positions fall have the same biology but
-    # different strings. Keying on the projected string would count them as
-    # distinct and manufacture diversity that rises as the ambiguity threshold
-    # is loosened. The mutation profile is invariant to that.
     meta["mutation_profile"] = [
         ";".join(align.format_mutation(*m)
                  for m in align.mutations_vs_reference(s, reference))
         for s in meta["spike"]
     ]
 
-    # Quantify duplicates before removing them.
     groups = meta.groupby("mutation_profile")
     dup_groups = [g for _, g in groups if len(g) > 1]
     n_dup_records = sum(len(g) for g in dup_groups)
@@ -180,11 +150,7 @@ def build_dataset(
 
 
 def duplicate_region_ceiling(meta_before_dedup: pd.DataFrame) -> float:
-    """Best accuracy any sequence-only region classifier could reach.
-
-    For each distinct sequence, the best possible choice is its most common
-    region; every other record sharing that sequence is necessarily wrong.
-    """
+    """Best accuracy any sequence-only region classifier could reach."""
     total = len(meta_before_dedup)
     if not total:
         return float("nan")
