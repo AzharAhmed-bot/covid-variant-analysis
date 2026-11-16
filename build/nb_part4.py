@@ -251,14 +251,14 @@ md("""
 
 ### One conclusion per objective
 
-**Objective 1 — assemble a usable dataset.** Spike sequences were retrieved for
+**Objective 1: assemble a usable dataset.** Spike sequences were retrieved for
 Alpha, Delta and Omicron isolates with lineage, collection date and region.
 The filtering chain is in Stage 3. The binding constraint was not the number
 of records but the number of *distinct* spike sequences: thousands of isolates
 collapse to a few hundred distinct mutation profiles, because within a variant
 most isolates differ nowhere in spike.
 
-**Objective 2 — compare variation between variants.** Mutation frequency
+**Objective 2: compare variation between variants.** Mutation frequency
 differs significantly between variants at many spike positions after
 Benjamini-Hochberg correction. RBD mutation burden differs decisively
 (Kruskal-Wallis, with every pairwise comparison significant and complete
@@ -267,14 +267,14 @@ Alpha, 2 in Delta and 16 in Omicron. H0 for mutation burden is rejected. As
 stated in Stage 1, this confirms the pipeline reproduces known biology rather
 than discovering anything, because the lineage definitions determine it.
 
-**Objective 3 — interpret the results biologically.** Differentiated positions
+**Objective 3: interpret the results biologically.** Differentiated positions
 concentrate in the S1/S2 furin cleavage site, the RBD and the NTD when
 normalised by domain length. The observed high-frequency mutations recover the
 curated variant-defining sets, and the residual disagreements are explained:
 extra positions are sublineage markers, and missing ones are chiefly NTD
 deletions whose placement protein-level alignment cannot resolve.
 
-**Objective 4 — predict and ablate.** Geographic region is predictable from
+**Objective 4: predict and ablate.** Geographic region is predictable from
 spike sequence above a majority-class baseline within a single Pango lineage,
 replicated independently in B.1.1.7, B.1.617.2 and BA.2, so H0 for geographic
 prediction is rejected. The strength varies by lineage and is weakest in

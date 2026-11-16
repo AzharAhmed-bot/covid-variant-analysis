@@ -1,4 +1,4 @@
-# Individual Reflection — Computing Bioinformatics Group Project
+# Individual Reflection: Computing Bioinformatics Group Project
 
 **Name:**  ____________________    **Admission number:**  ____________________
 
@@ -22,7 +22,7 @@ ____________________________________________________________________
 ## 2. Challenges experienced
 
 *What actually went wrong, and what did you do about it? Specific beats
-general. Below are real difficulties this project ran into — use any that you
+general. Below are real difficulties this project ran into , use any that you
 personally dealt with, and add your own.*
 
 - The data source did not behave as documented. The NCBI download endpoint

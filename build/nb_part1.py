@@ -19,7 +19,7 @@ def module_cell(name):
 md("""
 # SARS-CoV-2 Spike Protein Variation Across Alpha, Delta and Omicron
 
-**Computing Bioinformatics — Group Project**
+**Computing Bioinformatics, Group Project**
 
 This notebook compares amino-acid variation in the SARS-CoV-2 spike protein
 between the Alpha, Delta and Omicron variants, asks how much of the

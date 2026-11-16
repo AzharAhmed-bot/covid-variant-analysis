@@ -6,6 +6,17 @@ machine learning.
 
 Computing Bioinformatics group project, Strathmore University.
 
+## Group members
+
+| Name | Admission number |
+|---|---|
+| Stephen Nyariki | 166539 |
+| Omar Siddique | 152322 |
+| Shadrack Njau | 152522 |
+| Azhar Takoy | 169683 |
+| Casper Muhereza | 168879 |
+| Hetvi Barot | 169208 |
+
 Main file: [`deliverables/spike_variation_analysis.ipynb`](deliverables/spike_variation_analysis.ipynb)
 
 ## Background
